@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLoginUrl } from "@/const";
-import { FileText, Upload, CheckCircle2, AlertCircle, Clock, Loader2 } from "lucide-react";
+import { FileText, Upload, CheckCircle2, AlertCircle, Clock, Loader2, Download, FileDown } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -55,6 +55,21 @@ export default function Home() {
     { id: currentAnalysisId! },
     { enabled: !!currentAnalysisId && step === "analysis" }
   );
+
+  const { data: reportData } = trpc.examAnalyses.generateReport.useQuery(
+    { id: currentAnalysisId! },
+    { enabled: !!currentAnalysisId && step === "analysis" }
+  );
+
+  const downloadPDF = trpc.examAnalyses.downloadPDF.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, "_blank");
+      toast.success("PDF gerado com sucesso!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao gerar PDF: " + error.message);
+    },
+  });
 
   const { data: recentAnalyses } = trpc.examAnalyses.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -456,7 +471,39 @@ export default function Home() {
                   </div>
                 )}
 
-                <Button onClick={handleReset} className="w-full" size="lg">
+                {analysisData.missingExams.length > 0 && reportData && (
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <h4 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Relatório de Não Conformidade
+                    </h4>
+                    <div className="bg-white p-4 rounded border border-red-100 mb-3">
+                      <pre className="text-xs font-mono whitespace-pre-wrap text-gray-700 max-h-64 overflow-y-auto">
+                        {reportData.missingReport}
+                      </pre>
+                    </div>
+                    <Button 
+                      onClick={() => downloadPDF.mutate({ id: currentAnalysisId! })}
+                      disabled={downloadPDF.isPending}
+                      className="w-full"
+                      variant="destructive"
+                    >
+                      {downloadPDF.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Gerando PDF...
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Baixar Relatório Completo em PDF
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                <Button onClick={handleReset} className="w-full mt-4" size="lg">
                   Nova Análise
                 </Button>
               </CardContent>

@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { storagePut } from "./storage";
 
 export const appRouter = router({
   system: systemRouter,
@@ -141,6 +142,68 @@ export const appRouter = router({
         const { deleteExamAnalysis } = await import("./db");
         await deleteExamAnalysis(input.id);
         return { success: true };
+      }),
+    
+    generateReport: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getExamAnalysisById } = await import("./db");
+        const { generateComplianceReport, generateMissingExamsReport } = await import("./reportGenerator");
+        
+        const analysis = await getExamAnalysisById(input.id);
+        if (!analysis) {
+          throw new Error("Análise não encontrada");
+        }
+        
+        const reportData = {
+          patientName: analysis.patientName,
+          patientIdentifier: analysis.patientIdentifier,
+          requestDate: analysis.requestDate,
+          resultDate: analysis.resultDate,
+          requestedExams: analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [],
+          performedExams: analysis.performedExams ? JSON.parse(analysis.performedExams) : [],
+          missingExams: analysis.missingExams ? JSON.parse(analysis.missingExams) : [],
+          extraExams: analysis.extraExams ? JSON.parse(analysis.extraExams) : [],
+          complianceStatus: analysis.complianceStatus,
+        };
+        
+        const fullReport = generateComplianceReport(reportData);
+        const missingReport = generateMissingExamsReport(reportData);
+        
+        return { fullReport, missingReport };
+      }),
+    
+    downloadPDF: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getExamAnalysisById } = await import("./db");
+        const { generateCompliancePDF } = await import("./pdfGenerator");
+        const { storagePut } = await import("./storage");
+        
+        const analysis = await getExamAnalysisById(input.id);
+        if (!analysis) {
+          throw new Error("Análise não encontrada");
+        }
+        
+        const reportData = {
+          patientName: analysis.patientName,
+          patientIdentifier: analysis.patientIdentifier,
+          requestDate: analysis.requestDate,
+          resultDate: analysis.resultDate,
+          requestedExams: analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [],
+          performedExams: analysis.performedExams ? JSON.parse(analysis.performedExams) : [],
+          missingExams: analysis.missingExams ? JSON.parse(analysis.missingExams) : [],
+          extraExams: analysis.extraExams ? JSON.parse(analysis.extraExams) : [],
+          complianceStatus: analysis.complianceStatus,
+        };
+        
+        const pdfBuffer = await generateCompliancePDF(reportData);
+        const fileName = `relatorio-conformidade-${input.id}-${Date.now()}.pdf`;
+        const fileKey = `reports/${fileName}`;
+        
+        const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+        
+        return { url, fileName };
       }),
   }),
 });

@@ -72,4 +72,22 @@
 - [x] Atualizar testes para novo fluxo
 - [x] Testar análise com texto colado
 - [x] Testar upload de imagens JPG
-- [ ] Criar checkpoint final
+- [x] Criar checkpoint final
+
+## Relatório de Não Conformidade
+
+### Backend
+- [x] Criar função para gerar relatório em texto formatado
+- [x] Implementar endpoint tRPC para gerar PDF do relatório
+- [x] Adicionar biblioteca para geração de PDF
+
+### Frontend
+- [x] Adicionar seção de relatório na tela de análise
+- [x] Implementar visualização do relatório em texto
+- [x] Adicionar botão de download do PDF
+- [x] Mostrar apenas quando houver exames faltantes
+
+### Testes
+- [x] Testar geração de relatório em texto
+- [x] Testar download do PDF
+- [ ] Criar checkpoint com nova funcionalidade
