@@ -5,7 +5,6 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -18,173 +17,130 @@ export const appRouter = router({
     }),
   }),
 
-  patients: router({
+  examAnalyses: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      const { getPatientsByUser } = await import("./db");
-      return await getPatientsByUser(ctx.user.id);
+      const { getExamAnalysesByUser } = await import("./db");
+      return await getExamAnalysesByUser(ctx.user.id);
     }),
+    
     create: protectedProcedure
       .input(z.object({
-        name: z.string().min(1),
-        cpf: z.string().optional(),
-        birthDate: z.string().optional(),
-        phone: z.string().optional(),
-        email: z.string().email().optional(),
+        patientName: z.string().optional(),
+        patientIdentifier: z.string().optional(),
+        requestText: z.string().optional(),
+        requestPdfUrl: z.string().optional(),
+        requestPdfKey: z.string().optional(),
+        requestDate: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const { createPatient } = await import("./db");
-        const patientId = await createPatient({
-          ...input,
-          birthDate: input.birthDate ? new Date(input.birthDate) : undefined,
-          createdBy: ctx.user.id,
-        });
-        return { id: patientId };
-      }),
-    getById: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        const { getPatientById } = await import("./db");
-        return await getPatientById(input.id);
-      }),
-    update: protectedProcedure
-      .input(z.object({
-        id: z.number(),
-        name: z.string().min(1).optional(),
-        cpf: z.string().optional(),
-        birthDate: z.string().optional(),
-        phone: z.string().optional(),
-        email: z.string().email().optional(),
-      }))
-      .mutation(async ({ input }) => {
-        const { updatePatient } = await import("./db");
-        const { id, ...data } = input;
-        await updatePatient(id, {
-          ...data,
-          birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
-        });
-        return { success: true };
-      }),
-  }),
-
-  examRequests: router({
-    listByPatient: protectedProcedure
-      .input(z.object({ patientId: z.number() }))
-      .query(async ({ input }) => {
-        const { getExamRequestsByPatient } = await import("./db");
-        return await getExamRequestsByPatient(input.patientId);
-      }),
-    create: protectedProcedure
-      .input(z.object({
-        patientId: z.number(),
-        requestDate: z.string(),
-        doctorName: z.string().optional(),
-        pdfUrl: z.string(),
-        pdfKey: z.string(),
-        notes: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const { createExamRequest, createExamRequestItems } = await import("./db");
-        const { extractTextFromPdfUrl, extractExamNamesFromText } = await import("./pdfProcessor");
+        const { createExamAnalysis } = await import("./db");
+        const { extractExamNamesFromText } = await import("./pdfProcessor");
         
-        // Extrai texto do PDF
-        const extractedText = await extractTextFromPdfUrl(input.pdfUrl);
-        const examNames = extractExamNamesFromText(extractedText);
+        let requestText = input.requestText || "";
+        let requestedExams: string[] = [];
         
-        // Cria o pedido
-        const requestId = await createExamRequest({
-          ...input,
-          requestDate: new Date(input.requestDate),
-          extractedText,
-          createdBy: ctx.user.id,
-        });
-        
-        // Cria os itens do pedido
-        if (examNames.length > 0) {
-          await createExamRequestItems(
-            examNames.map(name => ({
-              examRequestId: requestId,
-              examName: name,
-            }))
-          );
+        // Se tiver PDF, extrai o texto
+        if (input.requestPdfUrl) {
+          const { extractTextFromPdfUrl } = await import("./pdfProcessor");
+          requestText = await extractTextFromPdfUrl(input.requestPdfUrl);
         }
         
-        return { id: requestId, examCount: examNames.length };
-      }),
-    getById: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        const { getExamRequestById, getExamRequestItems } = await import("./db");
-        const request = await getExamRequestById(input.id);
-        if (!request) return null;
-        const items = await getExamRequestItems(input.id);
-        return { ...request, items };
-      }),
-  }),
-
-  examResults: router({
-    listByRequest: protectedProcedure
-      .input(z.object({ requestId: z.number() }))
-      .query(async ({ input }) => {
-        const { getExamResultsByRequest } = await import("./db");
-        return await getExamResultsByRequest(input.requestId);
-      }),
-    create: protectedProcedure
-      .input(z.object({
-        examRequestId: z.number(),
-        resultDate: z.string(),
-        laboratoryName: z.string().optional(),
-        pdfUrl: z.string(),
-        pdfKey: z.string(),
-        notes: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const { createExamResult, createExamResultItems, getExamRequestItems, updateExamResult } = await import("./db");
-        const { extractTextFromPdfUrl, extractExamNamesFromText, analyzeCompliance } = await import("./pdfProcessor");
+        // Extrai nomes dos exames do texto
+        if (requestText) {
+          requestedExams = extractExamNamesFromText(requestText);
+        }
         
-        // Extrai texto do PDF
-        const extractedText = await extractTextFromPdfUrl(input.pdfUrl);
-        const examNames = extractExamNamesFromText(extractedText);
-        
-        // Cria o resultado
-        const resultId = await createExamResult({
-          ...input,
-          resultDate: new Date(input.resultDate),
-          extractedText,
+        const analysisId = await createExamAnalysis({
+          patientName: input.patientName,
+          patientIdentifier: input.patientIdentifier,
+          requestText,
+          requestPdfUrl: input.requestPdfUrl,
+          requestPdfKey: input.requestPdfKey,
+          requestDate: input.requestDate ? new Date(input.requestDate) : undefined,
+          requestedExams: JSON.stringify(requestedExams),
           createdBy: ctx.user.id,
-          complianceStatus: "not_analyzed",
         });
         
-        // Cria os itens do resultado
-        if (examNames.length > 0) {
-          await createExamResultItems(
-            examNames.map(name => ({
-              examResultId: resultId,
-              examName: name,
-            }))
-          );
+        return { id: analysisId, requestedExamsCount: requestedExams.length };
+      }),
+    
+    addResult: protectedProcedure
+      .input(z.object({
+        analysisId: z.number(),
+        resultFileUrl: z.string(),
+        resultFileKey: z.string(),
+        resultFileType: z.enum(["pdf", "image"]),
+        resultDate: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getExamAnalysisById, updateExamAnalysis } = await import("./db");
+        const { extractTextFromPdfUrl, extractExamNamesFromText, analyzeCompliance } = await import("./pdfProcessor");
+        
+        // Busca a análise existente
+        const analysis = await getExamAnalysisById(input.analysisId);
+        if (!analysis) {
+          throw new Error("Análise não encontrada");
+        }
+        
+        // Extrai texto do resultado (apenas se for PDF)
+        let resultExtractedText = "";
+        let performedExams: string[] = [];
+        
+        if (input.resultFileType === "pdf") {
+          resultExtractedText = await extractTextFromPdfUrl(input.resultFileUrl);
+          performedExams = extractExamNamesFromText(resultExtractedText);
         }
         
         // Analisa conformidade
-        const requestItems = await getExamRequestItems(input.examRequestId);
-        const requestedExams = requestItems.map(item => item.examName);
-        const compliance = analyzeCompliance(requestedExams, examNames);
+        const requestedExams = analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [];
+        const compliance = analyzeCompliance(requestedExams, performedExams);
         
-        // Atualiza o resultado com a análise
-        await updateExamResult(resultId, {
+        // Atualiza a análise
+        await updateExamAnalysis(input.analysisId, {
+          resultFileUrl: input.resultFileUrl,
+          resultFileKey: input.resultFileKey,
+          resultFileType: input.resultFileType,
+          resultExtractedText: resultExtractedText || undefined,
+          resultDate: input.resultDate ? new Date(input.resultDate) : undefined,
+          performedExams: JSON.stringify(performedExams),
+          missingExams: JSON.stringify(compliance.missingExams),
+          extraExams: JSON.stringify(compliance.extraExams),
           complianceStatus: compliance.status,
           complianceDetails: JSON.stringify(compliance),
         });
         
-        return { id: resultId, examCount: examNames.length, compliance };
+        return { 
+          success: true, 
+          performedExamsCount: performedExams.length,
+          compliance 
+        };
       }),
+    
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        const { getExamResultById, getExamResultItems } = await import("./db");
-        const result = await getExamResultById(input.id);
-        if (!result) return null;
-        const items = await getExamResultItems(input.id);
-        return { ...result, items };
+        const { getExamAnalysisById } = await import("./db");
+        const analysis = await getExamAnalysisById(input.id);
+        
+        if (!analysis) return null;
+        
+        // Parse JSON fields
+        return {
+          ...analysis,
+          requestedExams: analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [],
+          performedExams: analysis.performedExams ? JSON.parse(analysis.performedExams) : [],
+          missingExams: analysis.missingExams ? JSON.parse(analysis.missingExams) : [],
+          extraExams: analysis.extraExams ? JSON.parse(analysis.extraExams) : [],
+          complianceDetails: analysis.complianceDetails ? JSON.parse(analysis.complianceDetails) : null,
+        };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteExamAnalysis } = await import("./db");
+        await deleteExamAnalysis(input.id);
+        return { success: true };
       }),
   }),
 });

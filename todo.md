@@ -40,4 +40,36 @@
 
 ## Finalização
 - [x] Revisar e ajustar interface
+- [x] Criar checkpoint final
+
+## Refatoração - Fluxo Simplificado
+
+### Alterações Estruturais
+- [x] Remover dependência obrigatória de pacientes
+- [x] Simplificar schema do banco de dados
+- [x] Criar modelo de análise de exames independente
+
+### Backend
+- [x] Adicionar endpoint para análise com texto colado
+- [x] Manter endpoint para upload de PDF do pedido
+- [x] Adicionar suporte para upload de imagens JPG nos resultados
+- [x] Refatorar lógica de análise de conformidade
+
+### Frontend
+- [x] Criar página inicial simplificada com fluxo direto
+- [x] Implementar textarea para colar texto do pedido
+- [x] Manter opção de upload de PDF do pedido
+- [x] Implementar upload de PDF/JPG para resultados
+- [x] Criar visualização clara da análise de conformidade
+- [x] Remover páginas de cadastro de pacientes
+
+### Branding
+- [x] Renomear aplicação para "Compatibilidade de Exames - Instituto Elo de Saúde"
+- [x] Atualizar título e meta tags
+- [x] Atualizar textos da interface
+
+### Testes e Finalização
+- [x] Atualizar testes para novo fluxo
+- [x] Testar análise com texto colado
+- [x] Testar upload de imagens JPG
 - [ ] Criar checkpoint final

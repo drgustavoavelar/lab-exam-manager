@@ -15,6 +15,13 @@
       "when": 1764698088298,
       "tag": "0001_broad_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1764700120688,
+      "tag": "0002_common_sprite",
+      "breakpoints": true
     }
   ]
 }
