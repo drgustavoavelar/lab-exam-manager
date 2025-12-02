@@ -90,4 +90,18 @@
 ### Testes
 - [x] Testar geração de relatório em texto
 - [x] Testar download do PDF
-- [ ] Criar checkpoint com nova funcionalidade
+- [x] Criar checkpoint com nova funcionalidade
+
+## Bug Encontrado - Teste com Arquivos Reais
+
+### Problema
+- [x] Erro "DOMMatrix is not defined" ao processar texto colado
+- [x] Sistema tenta usar pdfjs-dist mesmo quando não há PDF
+
+### Solução
+- [x] Corrigir lógica no backend para não processar PDF quando requestText está presente
+- [x] Testar novamente com texto colado
+- [x] Sistema identificou 18 exames corretamente do texto colado
+- [ ] Teste manual necessário: upload de resultado em PDF
+- [ ] Teste manual necessário: verificar geração do relatório de não conformidade
+- [ ] Criar checkpoint final

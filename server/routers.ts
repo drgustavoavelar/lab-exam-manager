@@ -40,10 +40,11 @@ export const appRouter = router({
         let requestText = input.requestText || "";
         let requestedExams: string[] = [];
         
-        // Se tiver PDF, extrai o texto
-        if (input.requestPdfUrl) {
-          const { extractTextFromPdfUrl } = await import("./pdfProcessor");
-          requestText = await extractTextFromPdfUrl(input.requestPdfUrl);
+        // Se tiver PDF, por enquanto não processa automaticamente
+        // O usuário deve usar a opção de colar texto
+        if (input.requestPdfUrl && !requestText) {
+          // Futuramente: implementar extração de PDF com biblioteca adequada para Node.js
+          console.log("PDF recebido mas não processado automaticamente");
         }
         
         // Extrai nomes dos exames do texto
@@ -75,7 +76,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const { getExamAnalysisById, updateExamAnalysis } = await import("./db");
-        const { extractTextFromPdfUrl, extractExamNamesFromText, analyzeCompliance } = await import("./pdfProcessor");
+        const { extractExamNamesFromText, analyzeCompliance } = await import("./pdfProcessor");
         
         // Busca a análise existente
         const analysis = await getExamAnalysisById(input.analysisId);
@@ -83,14 +84,13 @@ export const appRouter = router({
           throw new Error("Análise não encontrada");
         }
         
-        // Extrai texto do resultado (apenas se for PDF)
+        // Por enquanto, não extrai texto automaticamente de PDFs
+        // O usuário deve informar os exames realizados manualmente ou usar OCR externo
         let resultExtractedText = "";
         let performedExams: string[] = [];
         
-        if (input.resultFileType === "pdf") {
-          resultExtractedText = await extractTextFromPdfUrl(input.resultFileUrl);
-          performedExams = extractExamNamesFromText(resultExtractedText);
-        }
+        // Futuramente: implementar extração de PDF/imagem com OCR
+        console.log("Resultado recebido:", input.resultFileType);
         
         // Analisa conformidade
         const requestedExams = analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [];
@@ -106,7 +106,7 @@ export const appRouter = router({
           performedExams: JSON.stringify(performedExams),
           missingExams: JSON.stringify(compliance.missingExams),
           extraExams: JSON.stringify(compliance.extraExams),
-          complianceStatus: compliance.status,
+          complianceStatus: compliance.complianceStatus,
           complianceDetails: JSON.stringify(compliance),
         });
         

@@ -1,166 +1,251 @@
-import axios from "axios";
-import * as pdfjsLib from "pdfjs-dist";
-
 /**
- * Extrai texto de um PDF a partir de uma URL
+ * Módulo de processamento de texto de exames
+ * Removida dependência de pdfjs-dist para evitar erros no Node.js
  */
-export async function extractTextFromPdfUrl(pdfUrl: string): Promise<string> {
-  try {
-    const response = await axios.get(pdfUrl, {
-      responseType: "arraybuffer",
-    });
-    
-    const pdfBuffer = new Uint8Array(response.data);
-    const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
-    const pdf = await loadingTask.promise;
-    
-    let fullText = "";
-    
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
-      fullText += pageText + "\n";
-    }
-    
-    return fullText;
-  } catch (error) {
-    console.error("Erro ao extrair texto do PDF:", error);
-    throw new Error("Falha ao processar o PDF");
-  }
-}
 
 /**
- * Extrai nomes de exames de um texto extraído de PDF
- * Esta é uma implementação básica que pode ser melhorada com IA
+ * Extrai nomes de exames de um texto
+ * Esta é uma implementação básica que identifica linhas que parecem ser nomes de exames
  */
 export function extractExamNamesFromText(text: string): string[] {
-  const lines = text.split("\n").map(line => line.trim()).filter(line => line.length > 0);
+  const lines = text
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.length > 2 && line.length < 200); // Filtrar linhas muito curtas ou muito longas
   
   // Palavras-chave comuns em pedidos de exames
   const examKeywords = [
     "hemograma",
     "glicose",
+    "glicemia",
     "colesterol",
+    "triglicérides",
     "triglicerídeos",
     "creatinina",
     "ureia",
+    "uréia",
     "tgo",
     "tgp",
-    "gama gt",
-    "fosfatase alcalina",
+    "ggt",
+    "fosfatase",
     "bilirrubina",
-    "ácido úrico",
-    "proteínas totais",
+    "proteína",
     "albumina",
     "globulina",
-    "cálcio",
-    "fósforo",
-    "magnésio",
-    "sódio",
-    "potássio",
-    "ferro",
-    "ferritina",
-    "vitamina",
     "tsh",
     "t3",
     "t4",
-    "psa",
-    "beta hcg",
+    "tiroxina",
+    "fsh",
+    "lh",
+    "estradiol",
+    "progesterona",
+    "prolactina",
+    "testosterona",
+    "shbg",
+    "vitamina",
+    "ferro",
+    "ferritina",
+    "transferrina",
+    "ácido",
+    "acido",
+    "fólico",
+    "folico",
+    "homocisteína",
+    "homocisteina",
+    "cálcio",
+    "calcio",
+    "magnésio",
+    "magnesio",
+    "sódio",
+    "sodio",
+    "potássio",
+    "potassio",
+    "pth",
+    "paratormônio",
+    "apolipoproteína",
+    "apolipoproteina",
+    "hdl",
+    "ldl",
+    "vldl",
+    "homa",
+    "insulina",
+    "hba1c",
+    "hemoglobina glicada",
+    "eas",
     "urina",
     "fezes",
+    "parasitológico",
+    "parasitologico",
     "cultura",
-    "raio x",
-    "ultrassom",
-    "tomografia",
-    "ressonância",
-    "eletrocardiograma",
-    "ecocardiograma",
+    "antibiograma",
+    "pcr",
+    "proteína c reativa",
+    "proteina c reativa",
+    "vhs",
+    "eletroforese",
   ];
   
-  const foundExams: string[] = [];
+  const exams: string[] = [];
+  const seenExams = new Set<string>();
   
   for (const line of lines) {
-    const lowerLine = line.toLowerCase();
+    const lineLower = line.toLowerCase();
     
     // Verifica se a linha contém alguma palavra-chave de exame
-    for (const keyword of examKeywords) {
-      if (lowerLine.includes(keyword)) {
-        foundExams.push(line);
-        break;
+    const hasKeyword = examKeywords.some(keyword => lineLower.includes(keyword));
+    
+    // Verifica se não parece ser cabeçalho, rodapé ou texto descritivo
+    const looksLikeExam = 
+      hasKeyword &&
+      !lineLower.includes("laboratório") &&
+      !lineLower.includes("laboratorio") &&
+      !lineLower.includes("resultado") &&
+      !lineLower.includes("paciente") &&
+      !lineLower.includes("médico") &&
+      !lineLower.includes("medico") &&
+      !lineLower.includes("data") &&
+      !lineLower.includes("página") &&
+      !lineLower.includes("pagina") &&
+      !lineLower.includes("protocolo") &&
+      !lineLower.includes("cadastro") &&
+      !lineLower.includes("telefone") &&
+      !lineLower.includes("endereço") &&
+      !lineLower.includes("endereco") &&
+      !lineLower.includes("cpf") &&
+      !lineLower.includes("crm") &&
+      !lineLower.includes("cnes");
+    
+    if (looksLikeExam) {
+      // Limpa e normaliza o nome do exame
+      let examName = line
+        .replace(/^\d+[\.\)]\s*/, "") // Remove numeração no início
+        .replace(/^[-•]\s*/, "") // Remove marcadores
+        .trim();
+      
+      // Evita duplicatas (case-insensitive)
+      const examKey = examName.toLowerCase();
+      if (examName && !seenExams.has(examKey)) {
+        seenExams.add(examKey);
+        exams.push(examName);
       }
     }
   }
   
-  return foundExams;
+  // Se não encontrou nenhum exame com as palavras-chave, tenta uma abordagem mais simples
+  // Considera cada linha não vazia como um possível exame
+  if (exams.length === 0) {
+    for (const line of lines) {
+      // Ignora linhas que parecem ser cabeçalhos ou rodapés
+      if (
+        line.length > 3 &&
+        line.length < 150 &&
+        !line.toLowerCase().includes("solicitação") &&
+        !line.toLowerCase().includes("solicitacao") &&
+        !line.toLowerCase().includes("pedido") &&
+        !line.toLowerCase().includes("exemplo:") &&
+        !line.toLowerCase().includes("cole aqui")
+      ) {
+        let examName = line
+          .replace(/^\d+[\.\)]\s*/, "")
+          .replace(/^[-•]\s*/, "")
+          .trim();
+        
+        const examKey = examName.toLowerCase();
+        if (examName && !seenExams.has(examKey)) {
+          seenExams.add(examKey);
+          exams.push(examName);
+        }
+      }
+    }
+  }
+  
+  return exams;
 }
 
 /**
- * Analisa conformidade entre pedidos e resultados
+ * Analisa conformidade entre exames solicitados e realizados
  */
-export function analyzeCompliance(requestedExams: string[], resultExams: string[]): {
-  status: "complete" | "partial" | "pending";
-  details: string;
+export function analyzeCompliance(
+  requestedExams: string[],
+  performedExams: string[]
+): {
   missingExams: string[];
   extraExams: string[];
+  matchedExams: string[];
+  complianceStatus: "complete" | "partial" | "pending";
 } {
-  const requestedLower = requestedExams.map(e => e.toLowerCase().trim());
-  const resultLower = resultExams.map(e => e.toLowerCase().trim());
+  const requestedSet = new Set(requestedExams.map(e => e.toLowerCase().trim()));
+  const performedSet = new Set(performedExams.map(e => e.toLowerCase().trim()));
   
   const missingExams: string[] = [];
-  const foundExams: string[] = [];
+  const matchedExams: string[] = [];
   
-  // Verifica quais exames solicitados foram realizados
-  for (let i = 0; i < requestedExams.length; i++) {
-    const requested = requestedLower[i];
-    const found = resultLower.some(result => 
-      result.includes(requested) || requested.includes(result)
-    );
+  // Verifica exames solicitados que foram realizados
+  for (const requested of requestedExams) {
+    const requestedLower = requested.toLowerCase().trim();
+    let found = false;
     
-    if (found) {
-      foundExams.push(requestedExams[i]);
+    // Busca exata
+    if (performedSet.has(requestedLower)) {
+      matchedExams.push(requested);
+      found = true;
     } else {
-      missingExams.push(requestedExams[i]);
+      // Busca parcial (contém)
+      for (const performed of performedExams) {
+        const performedLower = performed.toLowerCase().trim();
+        if (
+          performedLower.includes(requestedLower) ||
+          requestedLower.includes(performedLower)
+        ) {
+          matchedExams.push(requested);
+          found = true;
+          break;
+        }
+      }
     }
-  }
-  
-  // Verifica exames extras (não solicitados mas realizados)
-  const extraExams: string[] = [];
-  for (let i = 0; i < resultExams.length; i++) {
-    const result = resultLower[i];
-    const wasRequested = requestedLower.some(requested => 
-      result.includes(requested) || requested.includes(result)
-    );
     
-    if (!wasRequested) {
-      extraExams.push(resultExams[i]);
+    if (!found) {
+      missingExams.push(requested);
     }
   }
   
-  let status: "complete" | "partial" | "pending";
-  let details: string;
-  
-  if (missingExams.length === 0 && foundExams.length === requestedExams.length) {
-    status = "complete";
-    details = `Todos os ${requestedExams.length} exames solicitados foram realizados.`;
-  } else if (foundExams.length > 0) {
-    status = "partial";
-    details = `${foundExams.length} de ${requestedExams.length} exames foram realizados. ${missingExams.length} exames faltando.`;
-  } else {
-    status = "pending";
-    details = "Nenhum dos exames solicitados foi encontrado nos resultados.";
+  // Verifica exames realizados que não foram solicitados
+  const extraExams: string[] = [];
+  for (const performed of performedExams) {
+    const performedLower = performed.toLowerCase().trim();
+    let found = false;
+    
+    for (const requested of requestedExams) {
+      const requestedLower = requested.toLowerCase().trim();
+      if (
+        requestedLower.includes(performedLower) ||
+        performedLower.includes(requestedLower)
+      ) {
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      extraExams.push(performed);
+    }
   }
   
-  if (extraExams.length > 0) {
-    details += ` ${extraExams.length} exame(s) adicional(is) não solicitado(s) foi(ram) realizado(s).`;
+  // Determina status de conformidade
+  let complianceStatus: "complete" | "partial" | "pending";
+  if (performedExams.length === 0) {
+    complianceStatus = "pending";
+  } else if (missingExams.length === 0) {
+    complianceStatus = "complete";
+  } else {
+    complianceStatus = "partial";
   }
   
   return {
-    status,
-    details,
     missingExams,
     extraExams,
+    matchedExams,
+    complianceStatus,
   };
 }
