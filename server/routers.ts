@@ -40,16 +40,26 @@ export const appRouter = router({
         let requestText = input.requestText || "";
         let requestedExams: string[] = [];
         
-        // Se tiver PDF, por enquanto não processa automaticamente
-        // O usuário deve usar a opção de colar texto
+        // Se tiver PDF, extrai o texto
         if (input.requestPdfUrl && !requestText) {
-          // Futuramente: implementar extração de PDF com biblioteca adequada para Node.js
-          console.log("PDF recebido mas não processado automaticamente");
+          const { extractTextFromPdfUrl } = await import("./pdfExtractor");
+          try {
+            requestText = await extractTextFromPdfUrl(input.requestPdfUrl);
+          } catch (error) {
+            console.error("Erro ao extrair PDF do pedido:", error);
+            throw new Error("Não foi possível processar o PDF. Por favor, cole o texto manualmente.");
+          }
         }
         
-        // Extrai nomes dos exames do texto
+        // Extrai nomes dos exames do texto usando IA
         if (requestText) {
-          requestedExams = extractExamNamesFromText(requestText);
+          const { extractExamNamesWithAI } = await import("./intelligentExtractor");
+          try {
+            requestedExams = await extractExamNamesWithAI(requestText);
+          } catch (error) {
+            console.error("Erro na extração com IA, usando fallback:", error);
+            requestedExams = extractExamNamesFromText(requestText);
+          }
         }
         
         const analysisId = await createExamAnalysis({
@@ -84,17 +94,41 @@ export const appRouter = router({
           throw new Error("Análise não encontrada");
         }
         
-        // Por enquanto, não extrai texto automaticamente de PDFs
-        // O usuário deve informar os exames realizados manualmente ou usar OCR externo
+        // Extrai texto do resultado
         let resultExtractedText = "";
         let performedExams: string[] = [];
         
-        // Futuramente: implementar extração de PDF/imagem com OCR
-        console.log("Resultado recebido:", input.resultFileType);
+        if (input.resultFileType === "pdf") {
+          const { extractTextFromPdfUrl } = await import("./pdfExtractor");
+          const { extractExamNamesWithAI } = await import("./intelligentExtractor");
+          try {
+            resultExtractedText = await extractTextFromPdfUrl(input.resultFileUrl);
+            // Tenta extrair com IA primeiro
+            try {
+              performedExams = await extractExamNamesWithAI(resultExtractedText);
+            } catch (aiError) {
+              console.error("Erro na extração com IA, usando fallback:", aiError);
+              performedExams = extractExamNamesFromText(resultExtractedText);
+            }
+          } catch (error) {
+            console.error("Erro ao extrair PDF do resultado:", error);
+            // Continua sem extrair texto automaticamente
+          }
+        } else if (input.resultFileType === "image") {
+          // Por enquanto, não processa imagens automaticamente
+          console.log("Imagem recebida, OCR não implementado ainda");
+        }
         
-        // Analisa conformidade
+        // Analisa conformidade usando IA
         const requestedExams = analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [];
-        const compliance = analyzeCompliance(requestedExams, performedExams);
+        const { analyzeComplianceWithAI } = await import("./intelligentExtractor");
+        let compliance;
+        try {
+          compliance = await analyzeComplianceWithAI(requestedExams, performedExams);
+        } catch (error) {
+          console.error("Erro na análise com IA, usando fallback:", error);
+          compliance = analyzeCompliance(requestedExams, performedExams);
+        }
         
         // Atualiza a análise
         await updateExamAnalysis(input.analysisId, {
