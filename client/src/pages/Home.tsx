@@ -32,10 +32,12 @@ export default function Home() {
     onSuccess: (data) => {
       setCurrentAnalysisId(data.id);
       setStep("result");
+      setUploading(false);
       toast.success(`Pedido processado! ${data.requestedExamsCount} exames identificados.`);
     },
     onError: (error) => {
       toast.error("Erro ao processar pedido: " + error.message);
+      setUploading(false);
     },
   });
 
@@ -99,6 +101,17 @@ export default function Home() {
         pdfKey = fileKey;
       }
 
+      // Mostra toast informativo
+      if (requestInputMethod === "pdf") {
+        toast.loading("Processando PDF com IA... Isso pode levar até 30 segundos.", {
+          id: "processing-pdf",
+        });
+      } else {
+        toast.loading("Analisando exames com IA...", {
+          id: "processing-pdf",
+        });
+      }
+
       createAnalysis.mutate({
         patientName: patientName || undefined,
         requestText: requestInputMethod === "text" ? requestText : undefined,
@@ -106,6 +119,9 @@ export default function Home() {
         requestPdfKey: pdfKey,
         requestDate: new Date().toISOString(),
       });
+      
+      // Remove toast de loading após 500ms (será substituído pelo toast de sucesso/erro)
+      setTimeout(() => toast.dismiss("processing-pdf"), 500);
     } catch (error) {
       toast.error("Erro ao fazer upload do arquivo");
       setUploading(false);

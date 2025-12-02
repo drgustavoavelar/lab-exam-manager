@@ -115,4 +115,19 @@
 - [x] Implementar análise de conformidade com IA
 - [x] Testar fluxo completo com IA: pedido → resultado → análise → relatório
 - [x] Verificar se relatório de não conformidade é gerado corretamente
-- [ ] Criar checkpoint final
+- [x] Criar checkpoint final
+
+## Bug - Processamento Infinito no Upload de PDF
+
+### Problema Reportado
+- [ ] Upload de PDF do pedido fica "Processando..." indefinidamente
+- [ ] IA pode estar demorando muito ou falhando silenciosamente
+- [ ] Usuário fica preso sem feedback
+
+### Solução
+- [x] Adicionar timeout para processamento com IA (máximo 30 segundos)
+- [x] Implementar fallback automático para método rápido se IA falhar
+- [x] Adicionar tratamento de erro mais robusto
+- [x] Melhorar feedback visual com mensagens de progresso
+- [x] Sistema pronto para teste com arquivo real
+- [ ] Criar checkpoint com correção

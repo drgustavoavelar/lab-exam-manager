@@ -51,14 +51,22 @@ export const appRouter = router({
           }
         }
         
-        // Extrai nomes dos exames do texto usando IA
+        // Extrai nomes dos exames do texto usando IA com timeout
         if (requestText) {
           const { extractExamNamesWithAI } = await import("./intelligentExtractor");
+          const { withTimeout } = await import("./aiWithTimeout");
           try {
-            requestedExams = await extractExamNamesWithAI(requestText);
+            // Timeout de 30 segundos para IA
+            requestedExams = await withTimeout(
+              extractExamNamesWithAI(requestText),
+              30000,
+              "Extração com IA excedeu 30 segundos"
+            );
+            console.log(`✓ Extração com IA concluída: ${requestedExams.length} exames`);
           } catch (error) {
             console.error("Erro na extração com IA, usando fallback:", error);
             requestedExams = extractExamNamesFromText(requestText);
+            console.log(`✓ Fallback concluído: ${requestedExams.length} exames`);
           }
         }
         
@@ -101,14 +109,21 @@ export const appRouter = router({
         if (input.resultFileType === "pdf") {
           const { extractTextFromPdfUrl } = await import("./pdfExtractor");
           const { extractExamNamesWithAI } = await import("./intelligentExtractor");
+          const { withTimeout } = await import("./aiWithTimeout");
           try {
             resultExtractedText = await extractTextFromPdfUrl(input.resultFileUrl);
-            // Tenta extrair com IA primeiro
+            // Tenta extrair com IA primeiro com timeout
             try {
-              performedExams = await extractExamNamesWithAI(resultExtractedText);
+              performedExams = await withTimeout(
+                extractExamNamesWithAI(resultExtractedText),
+                30000,
+                "Extração com IA excedeu 30 segundos"
+              );
+              console.log(`✓ Extração do resultado com IA: ${performedExams.length} exames`);
             } catch (aiError) {
               console.error("Erro na extração com IA, usando fallback:", aiError);
               performedExams = extractExamNamesFromText(resultExtractedText);
+              console.log(`✓ Fallback do resultado: ${performedExams.length} exames`);
             }
           } catch (error) {
             console.error("Erro ao extrair PDF do resultado:", error);
@@ -119,15 +134,22 @@ export const appRouter = router({
           console.log("Imagem recebida, OCR não implementado ainda");
         }
         
-        // Analisa conformidade usando IA
+        // Analisa conformidade usando IA com timeout
         const requestedExams = analysis.requestedExams ? JSON.parse(analysis.requestedExams) : [];
         const { analyzeComplianceWithAI } = await import("./intelligentExtractor");
+        const { withTimeout } = await import("./aiWithTimeout");
         let compliance;
         try {
-          compliance = await analyzeComplianceWithAI(requestedExams, performedExams);
+          compliance = await withTimeout(
+            analyzeComplianceWithAI(requestedExams, performedExams),
+            30000,
+            "Análise com IA excedeu 30 segundos"
+          );
+          console.log(`✓ Análise com IA concluída`);
         } catch (error) {
           console.error("Erro na análise com IA, usando fallback:", error);
           compliance = analyzeCompliance(requestedExams, performedExams);
+          console.log(`✓ Fallback de análise concluído`);
         }
         
         // Atualiza a análise
