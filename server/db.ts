@@ -89,4 +89,108 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+import { patients, examRequests, examResults, examRequestItems, examResultItems, InsertPatient, InsertExamRequest, InsertExamResult, InsertExamRequestItem, InsertExamResultItem } from "../drizzle/schema";
+import { desc, and } from "drizzle-orm";
+
+// ===== Pacientes =====
+export async function createPatient(patient: InsertPatient) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(patients).values(patient);
+  return result[0].insertId;
+}
+
+export async function getPatientsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(patients).where(eq(patients.createdBy, userId)).orderBy(desc(patients.createdAt));
+}
+
+export async function getPatientById(patientId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(patients).where(eq(patients.id, patientId)).limit(1);
+  return result[0];
+}
+
+export async function updatePatient(patientId: number, data: Partial<InsertPatient>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(patients).set(data).where(eq(patients.id, patientId));
+}
+
+// ===== Pedidos de Exames =====
+export async function createExamRequest(request: InsertExamRequest) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(examRequests).values(request);
+  return result[0].insertId;
+}
+
+export async function getExamRequestsByPatient(patientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(examRequests).where(eq(examRequests.patientId, patientId)).orderBy(desc(examRequests.requestDate));
+}
+
+export async function getExamRequestById(requestId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(examRequests).where(eq(examRequests.id, requestId)).limit(1);
+  return result[0];
+}
+
+// ===== Itens de Pedidos =====
+export async function createExamRequestItems(items: InsertExamRequestItem[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (items.length === 0) return;
+  await db.insert(examRequestItems).values(items);
+}
+
+export async function getExamRequestItems(requestId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(examRequestItems).where(eq(examRequestItems.examRequestId, requestId));
+}
+
+// ===== Resultados de Exames =====
+export async function createExamResult(result: InsertExamResult) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const insertResult = await db.insert(examResults).values(result);
+  return insertResult[0].insertId;
+}
+
+export async function getExamResultsByRequest(requestId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(examResults).where(eq(examResults.examRequestId, requestId)).orderBy(desc(examResults.resultDate));
+}
+
+export async function getExamResultById(resultId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(examResults).where(eq(examResults.id, resultId)).limit(1);
+  return result[0];
+}
+
+export async function updateExamResult(resultId: number, data: Partial<InsertExamResult>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(examResults).set(data).where(eq(examResults.id, resultId));
+}
+
+// ===== Itens de Resultados =====
+export async function createExamResultItems(items: InsertExamResultItem[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (items.length === 0) return;
+  await db.insert(examResultItems).values(items);
+}
+
+export async function getExamResultItems(resultId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(examResultItems).where(eq(examResultItems.examResultId, resultId));
+}
