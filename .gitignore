@@ -105,3 +105,32 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# Secrets and sensitive files
+*.pem
+*.key
+*.cert
+*.crt
+.env*.local
+secrets/
+credentials/
+
+# AWS and cloud credentials
+.aws/
+.gcloud/
+
+# Database dumps and backups
+*.sql
+*.dump
+backup/
+
+# Test files with sensitive data
+test-data/
+fixtures/sensitive/
+
+# Uploaded files (PDFs, images)
+uploads/
+storage/local/
+
+# Generated reports
+reports/generated/
