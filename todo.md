@@ -195,4 +195,4 @@
 - [x] Banner de adblocker aparecendo corretamente
 - [x] Toggle de modo simplificado visível e funcional
 - [x] Cache local salvando análises automaticamente
-- [ ] Criar checkpoint com melhorias completas
+- [x] Criar checkpoint com melhorias completas
