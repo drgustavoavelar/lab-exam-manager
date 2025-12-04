@@ -17,32 +17,59 @@ export async function extractTextFromPdfUrl(pdfUrl: string): Promise<string> {
   const tempTxtPath = path.join(tempDir, `pdf-${randomBytes(8).toString('hex')}.txt`);
   
   try {
+    console.log(`[PDF Extractor] Iniciando extração de: ${pdfUrl}`);
+    
     // Download do PDF
+    console.log('[PDF Extractor] Fazendo download do PDF...');
     const response = await axios.get(pdfUrl, {
       responseType: 'arraybuffer',
+      timeout: 30000, // 30 segundos de timeout
     });
     
+    console.log(`[PDF Extractor] PDF baixado: ${response.data.byteLength} bytes`);
     await writeFile(tempPdfPath, Buffer.from(response.data));
     
     // Extrai texto usando pdftotext
-    await execAsync(`pdftotext "${tempPdfPath}" "${tempTxtPath}"`);
+    console.log('[PDF Extractor] Executando pdftotext...');
+    const { stdout, stderr } = await execAsync(`pdftotext "${tempPdfPath}" "${tempTxtPath}"`);
+    if (stderr) {
+      console.warn('[PDF Extractor] pdftotext stderr:', stderr);
+    }
     
     // Lê o texto extraído
     const { readFile } = await import('fs/promises');
     const text = await readFile(tempTxtPath, 'utf-8');
+    console.log(`[PDF Extractor] Texto extraído: ${text.length} caracteres`);
     
     // Limpa arquivos temporários
     await unlink(tempPdfPath).catch(() => {});
     await unlink(tempTxtPath).catch(() => {});
     
+    if (!text || text.trim().length === 0) {
+      throw new Error('PDF não contém texto extraível (pode ser imagem)');
+    }
+    
     return text;
-  } catch (error) {
+  } catch (error: any) {
     // Limpa arquivos temporários em caso de erro
     await unlink(tempPdfPath).catch(() => {});
     await unlink(tempTxtPath).catch(() => {});
     
-    console.error('Erro ao extrair texto do PDF:', error);
-    throw new Error('Falha ao processar o PDF');
+    console.error('[PDF Extractor] Erro detalhado:', error);
+    
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      throw new Error('Timeout ao baixar o PDF. Tente novamente.');
+    }
+    
+    if (error.response) {
+      throw new Error(`Erro ao baixar PDF: ${error.response.status} ${error.response.statusText}`);
+    }
+    
+    if (error.message.includes('texto extraível')) {
+      throw new Error(error.message);
+    }
+    
+    throw new Error('Falha ao processar o PDF. Por favor, cole o texto manualmente.');
   }
 }
 

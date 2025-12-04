@@ -34,6 +34,15 @@ export const appRouter = router({
         requestDate: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        console.log('[CREATE ANALYSIS] Iniciando criação de análise');
+        console.log('[CREATE ANALYSIS] Input recebido:', {
+          hasPatientName: !!input.patientName,
+          hasRequestText: !!input.requestText,
+          hasRequestPdfUrl: !!input.requestPdfUrl,
+          requestPdfUrl: input.requestPdfUrl,
+          requestTextLength: input.requestText?.length || 0,
+        });
+        
         const { createExamAnalysis } = await import("./db");
         const { extractExamNamesFromText } = await import("./pdfProcessor");
         

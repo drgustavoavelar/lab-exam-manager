@@ -130,4 +130,40 @@
 - [x] Adicionar tratamento de erro mais robusto
 - [x] Melhorar feedback visual com mensagens de progresso
 - [x] Sistema pronto para teste com arquivo real
+- [x] Criar checkpoint com correção
+
+## Bug - Extração de PDF Falhando
+
+### Problema
+- [ ] pdftotext não está funcionando no servidor
+- [ ] Erro: "Não foi possível processar o PDF"
+- [ ] Colar texto funciona, mas upload de PDF falha
+
+### Diagnóstico
+- [x] Verificar se poppler-utils está instalado
+- [x] Testar pdftotext manualmente com arquivo silvia.pdf
+- [x] Verificar logs de erro do servidor
+- [x] Backend funciona perfeitamente em teste isolado
+- [x] Erro acontece na chamada tRPC do frontend
+- [ ] URL do S3 pode não estar sendo passada corretamente
+
+### Solução
+- [ ] Instalar poppler-utils se necessário
+- [ ] Ou usar biblioteca JavaScript alternativa (pdf-parse, pdfjs-dist)
+- [ ] Testar com arquivo real do usuário
 - [ ] Criar checkpoint com correção
+
+## Problema - Adblocker Bloqueando Aplicação
+
+### Problema Identificado
+- [ ] Adblocker está bloqueando scripts essenciais (ERR_BLOCKED_BY_CLIENT)
+- [ ] Scripts de analytics (Amplitude) sendo bloqueados
+- [ ] Aplicação funciona diretamente mas falha dentro de iframe do Google Sites
+- [ ] Usuários precisam desabilitar adblocker ou adicionar exceções
+
+### Solução
+- [x] Remover scripts de analytics desnecessários para reduzir bloqueios
+- [x] Criar página de instruções para usuários configurarem adblocker
+- [x] Adicionar link de ajuda na interface principal
+- [x] Interface atualizada com botão "Ajuda com Adblocker" visível
+- [ ] Criar checkpoint com melhorias

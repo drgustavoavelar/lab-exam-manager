@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLoginUrl } from "@/const";
-import { FileText, Upload, CheckCircle2, AlertCircle, Clock, Loader2, Download, FileDown } from "lucide-react";
+import { FileText, Upload, CheckCircle2, AlertCircle, Clock, Loader2, Download, FileDown, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { storagePut } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -249,7 +250,16 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 relative">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => window.location.href = "/ajuda"}
+              className="absolute right-0 top-0"
+            >
+              <HelpCircle className="h-5 w-5 mr-2" />
+              Ajuda com Adblocker
+            </Button>
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               Compatibilidade de Exames
             </h1>
