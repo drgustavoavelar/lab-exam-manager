@@ -32,6 +32,7 @@ export const appRouter = router({
         requestPdfUrl: z.string().optional(),
         requestPdfKey: z.string().optional(),
         requestDate: z.string().optional(),
+        useSimpleMode: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         console.log('[CREATE ANALYSIS] Iniciando criação de análise');
@@ -60,22 +61,29 @@ export const appRouter = router({
           }
         }
         
-        // Extrai nomes dos exames do texto usando IA com timeout
+        // Extrai nomes dos exames do texto
         if (requestText) {
-          const { extractExamNamesWithAI } = await import("./intelligentExtractor");
-          const { withTimeout } = await import("./aiWithTimeout");
-          try {
-            // Timeout de 30 segundos para IA
-            requestedExams = await withTimeout(
-              extractExamNamesWithAI(requestText),
-              30000,
-              "Extração com IA excedeu 30 segundos"
-            );
-            console.log(`✓ Extração com IA concluída: ${requestedExams.length} exames`);
-          } catch (error) {
-            console.error("Erro na extração com IA, usando fallback:", error);
+          // Se modo simplificado estiver ativo, usa extração básica
+          if (input.useSimpleMode) {
             requestedExams = extractExamNamesFromText(requestText);
-            console.log(`✓ Fallback concluído: ${requestedExams.length} exames`);
+            console.log(`✓ Extração básica concluída: ${requestedExams.length} exames`);
+          } else {
+            // Usa IA com timeout
+            const { extractExamNamesWithAI } = await import("./intelligentExtractor");
+            const { withTimeout } = await import("./aiWithTimeout");
+            try {
+              // Timeout de 30 segundos para IA
+              requestedExams = await withTimeout(
+                extractExamNamesWithAI(requestText),
+                30000,
+                "Extração com IA excedeu 30 segundos"
+              );
+              console.log(`✓ Extração com IA concluída: ${requestedExams.length} exames`);
+            } catch (error) {
+              console.error("Erro na extração com IA, usando fallback:", error);
+              requestedExams = extractExamNamesFromText(requestText);
+              console.log(`✓ Fallback concluído: ${requestedExams.length} exames`);
+            }
           }
         }
         

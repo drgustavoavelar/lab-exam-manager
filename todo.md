@@ -166,4 +166,33 @@
 - [x] Criar página de instruções para usuários configurarem adblocker
 - [x] Adicionar link de ajuda na interface principal
 - [x] Interface atualizada com botão "Ajuda com Adblocker" visível
-- [ ] Criar checkpoint com melhorias
+- [x] Criar checkpoint com melhorias
+
+## Novas Funcionalidades - Melhorias de Compatibilidade e UX
+
+### 1. Detecção Automática de Bloqueios
+- [x] Criar hook para detectar falhas de carregamento de scripts
+- [x] Implementar banner de aviso quando bloqueios forem detectados
+- [x] Adicionar link direto para página de ajuda no banner
+- [x] Banner pode ser dispensado pelo usuário
+
+### 2. Modo de Compatibilidade Máxima
+- [x] Criar toggle "Modo Simplificado" na interface
+- [x] Implementar lógica para desabilitar IA quando modo ativado
+- [x] Usar apenas extração básica de texto sem chamadas externas
+- [x] Salvar preferência do usuário no localStorage
+- [x] Toggle visível abaixo do título principal
+
+### 3. Cache Local de Análises
+- [x] Implementar salvamento automático no localStorage
+- [x] Criar hook para gerenciar cache de análises
+- [x] Implementar limpeza de cache antigo (> 7 dias)
+- [x] Cache salva até 50 análises mais recentes
+- [x] Limpeza automática de cache expirado ao carregar
+
+### Finalização
+- [x] Testar todas as funcionalidades integradas
+- [x] Banner de adblocker aparecendo corretamente
+- [x] Toggle de modo simplificado visível e funcional
+- [x] Cache local salvando análises automaticamente
+- [ ] Criar checkpoint com melhorias completas

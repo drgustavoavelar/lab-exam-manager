@@ -13,11 +13,21 @@ import { toast } from "sonner";
 import { storagePut } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import { useBlockerDetection } from "@/hooks/useBlockerDetection";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Shield } from "lucide-react";
+import { useCompatibilityMode } from "@/contexts/CompatibilityModeContext";
+import { Switch } from "@/components/ui/switch";
+import { useAnalysisCache } from "@/hooks/useAnalysisCache";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
+  const { isBlocked, checkedOnce } = useBlockerDetection();
+  const { isCompatibilityMode, toggleCompatibilityMode } = useCompatibilityMode();
+  const { saveToCache } = useAnalysisCache();
   const [step, setStep] = useState<"request" | "result" | "analysis">("request");
   const [currentAnalysisId, setCurrentAnalysisId] = useState<number | null>(null);
+  const [dismissedBlockerWarning, setDismissedBlockerWarning] = useState(false);
   
   // Estado do pedido
   const [requestText, setRequestText] = useState("");
@@ -47,6 +57,20 @@ export default function Home() {
       setStep("analysis");
       toast.success("Resultado processado! Análise de conformidade concluída.");
       refetchAnalysis();
+      
+      // Salva no cache local
+      if (data && data.compliance) {
+        saveToCache({
+          id: currentAnalysisId!,
+          patientName: patientName || undefined,
+          requestedExams: [],
+          performedExams: [],
+          missingExams: data.compliance.missingExams || [],
+          extraExams: data.compliance.extraExams || [],
+          status: data.compliance.complianceStatus,
+          createdAt: new Date().toISOString(),
+        });
+      }
     },
     onError: (error) => {
       toast.error("Erro ao processar resultado: " + error.message);
@@ -119,6 +143,7 @@ export default function Home() {
         requestPdfUrl: pdfUrl,
         requestPdfKey: pdfKey,
         requestDate: new Date().toISOString(),
+        useSimpleMode: isCompatibilityMode,
       });
       
       // Remove toast de loading após 500ms (será substituído pelo toast de sucesso/erro)
@@ -264,7 +289,47 @@ export default function Home() {
               Compatibilidade de Exames
             </h1>
             <p className="text-xl font-semibold text-gray-700">Instituto Elo de Saúde</p>
+            
+            {/* Toggle de modo de compatibilidade */}
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+              <Switch 
+                checked={isCompatibilityMode}
+                onCheckedChange={toggleCompatibilityMode}
+                id="compatibility-mode"
+              />
+              <label htmlFor="compatibility-mode" className="cursor-pointer text-gray-600">
+                Modo Simplificado {isCompatibilityMode && "(✓ Ativo)"}
+              </label>
+            </div>
           </div>
+
+          {/* Banner de aviso de adblocker */}
+          {checkedOnce && isBlocked && !dismissedBlockerWarning && (
+            <Alert className="mb-6 bg-amber-50 border-amber-300">
+              <Shield className="h-5 w-5 text-amber-600" />
+              <AlertTitle className="text-amber-900">Adblocker Detectado</AlertTitle>
+              <AlertDescription className="text-amber-800">
+                Detectamos que você está usando um adblocker. Isso pode impedir o upload de arquivos.
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.location.href = "/ajuda"}
+                    className="bg-white"
+                  >
+                    Ver Instruções
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDismissedBlockerWarning(true)}
+                  >
+                    Dispensar
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {step === "request" && (
             <Card className="bg-white/90 backdrop-blur">
